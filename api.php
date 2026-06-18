@@ -8,7 +8,7 @@ $action = isset($_GET["action"]) ? $_GET["action"] : "";
 
 switch ($action) {
     case 'login':
-       if ($method === 'POST') {
+        if ($method === 'POST') {
             $data = json_decode(file_get_contents("php://input"), true);
             $nik = mysqli_real_escape_string($koneksi, $data['nik'] ?? '');
             $password = $data['password'] ?? '';
@@ -25,7 +25,7 @@ switch ($action) {
                         "nama_pegawai" => $user['nama_pegawai'],
                         "role" => $user['role'],
                         "unit_teknisi" => $user['unit_teknisi'],
-                        "exp" => time() + (2*60*60) // Aktif 2 Jam
+                        "exp" => time() + (2 * 60 * 60) // Aktif 2 Jam
                     ];
                     $token = generate_jwt($payload, $jwt_secret);
                     response_api(200, true, "Login Berhasil", ["token" => $token, "role" => $user['role']]);
@@ -88,7 +88,38 @@ switch ($action) {
             response_api(405, false, "Method Not Allowed");
         }
         break;
+    case 'laporan':
+    case 'cetak_pdf':
+        $headers = getallheaders();
+        $authHeader = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+
+        if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            $_USER_DATA = validate_jwt($matches[1], $jwt_secret);
+            if (!$_USER_DATA) {
+                response_api(401, false, "Token tidak valid atau kadaluwarsa");
+            }
+        } else {
+            response_api(401, false, "Akses ditolak: Token Tidak Valid");
+        }
+        $user_role = $_USER_DATA['role'];
+        if ($action === 'laporan') {
+            if ($method === 'POST') {
+                if ($user_role !== 'pegawai') {
+                    response_api(403, false, "Hanya Pegawai yang dapat melapor.");
+                } else {
+                    require_once 'controllers/CreateTask.php';
+                }
+            } elseif ($method === 'DELETE') {
+                if ($user_role !== 'admin') {
+                    response_api(403, false, "Hanya Admin yang dapat menghapus data.");
+                } else {
+                    require_once 'controllers/DeleteTask.php';
+                }
+            }
+        }
+
+        break;
     default:
-        # code...
+        response_api(404, false, "Endpoint tidak ditemukan.");
         break;
 }
