@@ -5,13 +5,13 @@ header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
 $host = "localhost";
-$database = "db_todo";
+$database = "db_lapor_kendala";
 $username = "root";
 $password = "";
 
 // Buat koneksi database
 $koneksi = mysqli_connect($host, $username, $password, $database);
-
+$jwt_secret = "iN7dRmxG6EAxNswzXwt8UxYoxPHSZkUqVCDjPvDdTMu";
 if(!$koneksi){
     header("Content-Type: application/json");
     http_response_code(500);
