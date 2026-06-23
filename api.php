@@ -90,34 +90,38 @@ switch ($action) {
         break;
     case 'laporan':
     case 'cetak_pdf':
-        $headers = getallheaders();
+       $headers = getallheaders();
         $authHeader = isset($headers['Authorization']) ? $headers['Authorization'] : '';
-
+        
         if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
             $_USER_DATA = validate_jwt($matches[1], $jwt_secret);
-            if (!$_USER_DATA) {
-                response_api(401, false, "Token tidak valid atau kadaluwarsa");
-            }
+            if (!$_USER_DATA) response_api(401, false, "Token tidak valid atau kadaluwarsa.");
         } else {
-            response_api(401, false, "Akses ditolak: Token Tidak Valid");
-        }
-        $user_role = $_USER_DATA['role'];
-        if ($action === 'laporan') {
-            if ($method === 'POST') {
-                if ($user_role !== 'pegawai') {
-                    response_api(403, false, "Hanya Pegawai yang dapat melapor.");
-                } else {
-                    require_once 'controllers/CreateTask.php';
-                }
-            } elseif ($method === 'DELETE') {
-                if ($user_role !== 'admin') {
-                    response_api(403, false, "Hanya Admin yang dapat menghapus data.");
-                } else {
-                    require_once 'controllers/DeleteTask.php';
-                }
-            }
+            response_api(401, false, "Akses ditolak. Token Authorization tidak ditemukan.");
         }
 
+        // FILTER HAK AKSES BERDASARKAN ROLE (RBAC)
+        $user_role = $_USER_DATA['role'];
+
+        if ($action === 'cetak_pdf') {
+            if ($user_role !== 'admin' && $user_role !== 'teknisi') response_api(403, false, "Akses Terlarang.");
+            require_once 'controllers/CetakPDF.php';
+        } else {
+            if ($method === 'POST') {
+                if ($user_role !== 'pegawai') response_api(403, false, "Hanya pegawai yang dapat melapor.");
+                require_once 'controllers/CreateTask.php';
+            } elseif ($method === 'GET') {
+                require_once 'controllers/ReadTask.php';
+            } elseif ($method === 'PUT') {
+                if ($user_role !== 'admin' && $user_role !== 'teknisi') response_api(403, false, "Tidak memiliki hak merubah data.");
+                require_once 'controllers/UpdateTask.php';
+            } elseif ($method === 'DELETE') {
+                if ($user_role !== 'admin') response_api(403, false, "Hanya admin utama yang dapat menghapus data.");
+                require_once 'controllers/DeleteTask.php';
+            } else {
+                response_api(405, false, "Method Not Allowed");
+            }
+        }
         break;
     default:
         response_api(404, false, "Endpoint tidak ditemukan.");
